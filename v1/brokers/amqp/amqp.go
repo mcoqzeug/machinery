@@ -476,7 +476,9 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 	}
 
 	var tag uint64
-	defer channel.Nack(tag, true, true) // multiple, requeue
+	defer func() {
+		_ = channel.Nack(tag, true, true) // multiple, requeue
+	}()
 
 	dumper := &sigDumper{customQueue: queue}
 	for i := 0; i < queueInfo.Messages; i++ {
@@ -485,7 +487,7 @@ func (b *Broker) GetPendingTasks(queue string) ([]*tasks.Signature, error) {
 			return nil, errors.Wrap(err, "Failed to get from queue")
 		}
 		tag = d.DeliveryTag
-		b.consumeOne(d, dumper, false)
+		_ = b.consumeOne(d, dumper, false)
 	}
 
 	return dumper.Signatures, nil

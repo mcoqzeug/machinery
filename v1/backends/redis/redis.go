@@ -159,18 +159,21 @@ func (b *Backend) SetStatePending(signature *tasks.Signature) error {
 	conn := b.open()
 	defer conn.Close()
 
+	log.DEBUG.Printf("Task %s set state pending, args: %v", signature.UUID, signature.Args)
+
 	taskState := tasks.NewPendingTaskState(signature)
 	return b.updateState(conn, taskState)
 }
 
 // SetStateReceived updates task state to RECEIVED
-func (b *Backend) SetStateReceived(signature *tasks.Signature) error {
-	conn := b.open()
-	defer conn.Close()
-
-	taskState := tasks.NewReceivedTaskState(signature)
-	b.mergeNewTaskState(conn, taskState)
-	return b.updateState(conn, taskState)
+func (b *Backend) SetStateReceived(_ *tasks.Signature) error {
+	//conn := b.open()
+	//defer conn.Close()
+	//
+	//taskState := tasks.NewReceivedTaskState(signature)
+	//b.mergeNewTaskState(conn, taskState)
+	//return b.updateState(conn, taskState)
+	return nil
 }
 
 // SetStateStarted updates task state to STARTED

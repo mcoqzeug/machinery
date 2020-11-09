@@ -1,11 +1,12 @@
 package eager
 
 import (
+	"testing"
+	"time"
+
 	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
 	"github.com/RichardKnop/machinery/v1/utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestLock_Lock(t *testing.T) {
