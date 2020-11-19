@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
-	
+
 	"github.com/RichardKnop/machinery/v1/backends/amqp"
 	"github.com/RichardKnop/machinery/v1/brokers/errs"
 	"github.com/RichardKnop/machinery/v1/log"
@@ -113,6 +113,7 @@ func (worker *Worker) LaunchAsync(errorsChan chan<- error) {
 				} else {
 					// Abort the program when user hits Ctrl+C second time in a row
 					errorsChan <- ErrWorkerQuitAbruptly
+					return
 				}
 			}
 		}()
@@ -144,6 +145,7 @@ func (worker *Worker) Process(signature *tasks.Signature) error {
 
 	// Update task state to RECEIVED
 	if err = worker.server.GetBackend().SetStateReceived(signature); err != nil {
+		//todo: requeue
 		return fmt.Errorf("Set state to 'received' for task %s returned error: %s", signature.UUID, err)
 	}
 

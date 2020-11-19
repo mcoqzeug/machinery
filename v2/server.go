@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opentracing/opentracing-go"
 	"github.com/robfig/cron/v3"
 
 	"github.com/RichardKnop/machinery/v1/backends/result"
@@ -20,7 +21,6 @@ import (
 	backendsiface "github.com/RichardKnop/machinery/v1/backends/iface"
 	brokersiface "github.com/RichardKnop/machinery/v1/brokers/iface"
 	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
-	opentracing "github.com/opentracing/opentracing-go"
 )
 
 // Server is the main Machinery object and stores all configuration

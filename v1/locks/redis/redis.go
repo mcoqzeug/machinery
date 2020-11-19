@@ -1,14 +1,17 @@
 package redis
 
 import (
+	"context"
 	"errors"
-	"github.com/RichardKnop/machinery/v1/config"
-	"github.com/RichardKnop/redsync"
-	"github.com/go-redis/redis"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+
+	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/redsync"
 )
 
 var (
@@ -24,9 +27,9 @@ type Lock struct {
 	redisOnce  sync.Once
 }
 
-func New(cnf *config.Config, addrs []string, db, retries int) Lock {
+func New(cnf *config.Config, addrs []string, db, retries int) *Lock {
 	if retries <= 0 {
-		return Lock{}
+		return &Lock{}
 	}
 	lock := Lock{retries: retries}
 
@@ -49,11 +52,11 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 
 	lock.rclient = redis.NewUniversalClient(ropt)
 
-	return lock
+	return &lock
 }
 
 //try lock with retries
-func (r Lock) LockWithRetries(key string, value int64) error {
+func (r *Lock) LockWithRetries(key string, value int64) error {
 	for i := 0; i <= r.retries; i++ {
 		err := r.Lock(key, value)
 		if err == nil {
@@ -66,16 +69,18 @@ func (r Lock) LockWithRetries(key string, value int64) error {
 	return ErrRedisLockFailed
 }
 
-func (r Lock) Lock(key string, value int64) error {
+func (r *Lock) Lock(key string, value int64) error {
 	var now = time.Now().UnixNano()
 
-	success, err := r.rclient.SetNX(key, value, 0).Result()
+	ctx := context.Background()
+
+	success, err := r.rclient.SetNX(ctx, key, value, 0).Result()
 	if err != nil {
 		return err
 	}
 
 	if !success {
-		v, err := r.rclient.Get(key).Result()
+		v, err := r.rclient.Get(ctx, key).Result()
 		if err != nil {
 			return err
 		}
@@ -85,7 +90,7 @@ func (r Lock) Lock(key string, value int64) error {
 		}
 
 		if timeout != 0 && now > int64(timeout) {
-			newTimeout, err := r.rclient.GetSet(key, value).Result()
+			newTimeout, err := r.rclient.GetSet(ctx, key, value).Result()
 			if err != nil {
 				return err
 			}

@@ -60,7 +60,11 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 	defer b.consumingWG.Done()
 
 	if concurrency < 1 {
-		concurrency = runtime.NumCPU() * 2
+		if nCPU2 := runtime.NumCPU() * 2; nCPU2 < 1 {
+			concurrency = 1
+		} else {
+			concurrency = nCPU2
+		}
 	}
 
 	b.Broker.StartConsuming(consumerTag, concurrency, taskProcessor)
@@ -85,45 +89,40 @@ func (b *Broker) StartConsuming(consumerTag string, concurrency int, taskProcess
 
 	// Channel to which we will push tasks ready for processing by worker
 	deliveries := make(chan []byte, concurrency)
-	pool := make(chan struct{}, concurrency)
 
-	// initialize worker pool with maxWorkers workers
-	for i := 0; i < concurrency; i++ {
-		pool <- struct{}{}
-	}
+ 	log.INFO.Printf("[*] %s waiting for messages, concurrency: %d. To exit press CTRL+C", consumerTag, concurrency)
 
-	// A receiving goroutine keeps popping messages from the queue by BLPOP
-	// If the message is valid and can be unmarshaled into a proper structure
-	// we send it to the deliveries channel
 	go func() {
+		var popWg sync.WaitGroup
+		defer close(deliveries)
 
-		log.INFO.Print("[*] Waiting for messages. To exit press CTRL+C")
+		for i := 0; i< concurrency; i++ {
+			popWg.Add(1)
 
-		for {
-			select {
-			// A way to stop this goroutine from b.StopConsuming
-			case <-b.GetStopChan():
-				close(deliveries)
-				return
-			case <-pool:
-				select {
-				case <-b.GetStopChan():
-					close(deliveries)
-					return
-				default:
-				}
-
-				if taskProcessor.PreConsumeHandler() {
-					task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
-					//TODO: should this error be ignored?
-					if len(task) > 0 {
-						deliveries <- task
+			// A receiving goroutine keeps popping messages from the queue by BLPOP
+			// If the message is valid and can be unmarshalled into a proper structure
+			// we send it to the deliveries channel
+			go func() {
+				for {
+					select {
+					// A way to stop this goroutine from b.StopConsuming
+					case <-b.GetStopChan():
+						popWg.Done()
+						log.DEBUG.Printf("exit pop goroutine")
+						return
+					default:
+						if taskProcessor.PreConsumeHandler() {
+							task, _ := b.nextTask(getQueue(b.GetConfig(), taskProcessor))
+							//TODO: should this error be ignored?
+							if len(task) > 0 {
+								deliveries <- task
+							}
+						}
 					}
 				}
-
-				pool <- struct{}{}
-			}
+			}()
 		}
+		popWg.Wait()
 	}()
 
 	// A goroutine to watch for delayed tasks and push them to deliveries
@@ -275,11 +274,9 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 	pool := make(chan struct{}, concurrency)
 
 	// init pool for Worker tasks execution, as many slots as Worker concurrency param
-	go func() {
-		for i := 0; i < concurrency; i++ {
-			pool <- struct{}{}
-		}
-	}()
+	for i := 0; i < concurrency; i++ {
+		pool <- struct{}{}
+	}
 
 	for {
 		select {
@@ -289,14 +286,12 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 			if !open {
 				return nil
 			}
-			if concurrency > 0 {
-				// get execution slot from pool (blocks until one is available)
-				select {
-				case <-b.GetStopChan():
-					b.requeueMessage(d, taskProcessor)
-					continue
-				case <-pool:
-				}
+			// get execution slot from pool (blocks until one is available)
+			select {
+			case <-b.GetStopChan():
+				b.requeueMessage(d, taskProcessor)
+				continue
+			case <-pool:
 			}
 
 			b.processingWG.Add(1)
@@ -310,10 +305,8 @@ func (b *Broker) consume(deliveries <-chan []byte, concurrency int, taskProcesso
 
 				b.processingWG.Done()
 
-				if concurrency > 0 {
-					// give slot back to pool
-					pool <- struct{}{}
-				}
+				// give slot back to pool
+				pool <- struct{}{}
 			}()
 		}
 	}

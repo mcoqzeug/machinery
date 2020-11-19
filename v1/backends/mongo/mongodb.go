@@ -345,7 +345,7 @@ func (b *Backend) createMongoIndexes(database string) error {
 			Keys:    bson.M{"state": 1},
 			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
 		},
-		mongo.IndexModel{
+		{
 			Keys:    bson.M{"lock": 1},
 			Options: options.Index().SetBackground(true).SetExpireAfterSeconds(expireIn),
 		},

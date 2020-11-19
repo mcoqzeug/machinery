@@ -2,10 +2,11 @@ package tasks
 
 import (
 	"fmt"
-	"github.com/RichardKnop/machinery/v1/utils"
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/RichardKnop/machinery/v1/utils"
 )
 
 // Arg represents a single argument passed to invocation fo a task

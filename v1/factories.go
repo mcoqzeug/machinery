@@ -27,9 +27,9 @@ import (
 	nullbackend "github.com/RichardKnop/machinery/v1/backends/null"
 	redisbackend "github.com/RichardKnop/machinery/v1/backends/redis"
 
+	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 	lockiface "github.com/RichardKnop/machinery/v1/locks/iface"
 	redislock "github.com/RichardKnop/machinery/v1/locks/redis"
-	eagerlock "github.com/RichardKnop/machinery/v1/locks/eager"
 )
 
 // BrokerFactory creates a new object of iface.Broker

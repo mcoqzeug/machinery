@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/RichardKnop/machinery/v2"
 	"github.com/RichardKnop/machinery/v1/config"
+	"github.com/RichardKnop/machinery/v2"
 
 	backend "github.com/RichardKnop/machinery/v1/backends/eager"
 	broker "github.com/RichardKnop/machinery/v1/brokers/eager"
